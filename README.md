@@ -1,4 +1,4 @@
-# Orion_Fiji_Macros
+# Orion_Macros
 Some ImageJ/Fiji useful macros 
 
 ## Folder FileManip
