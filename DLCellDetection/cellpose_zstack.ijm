@@ -90,6 +90,7 @@ for (f = 0; f < inputFiles.length; f++) {
 		// Save cells 3D ROIs
 		Ext.Manager3D_SelectAll();
 		Ext.Manager3D_Save(resultDir+replace(inputFiles[f], fileExtension, "_rois.zip"));
+		Ext.Manager3D_Close();
 		
 		// Save cells mask
 		selectImage("image-cellpose");
