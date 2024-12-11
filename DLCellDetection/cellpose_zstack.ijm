@@ -10,8 +10,10 @@
 fileExtension = ".nd";
 channel = 2;
 
-cellposeEnvPath = "C:\\Users\\utilisateur\\miniconda3\\envs\\CellPose"
-cellposeModel = "cyto";
+cellposeEnvPath = "C:/Users/utilisateur/miniconda3/envs/CellPose/";
+cellposeModelPath = "C:/Users/utilisateur/.cellpose/models/";
+cellposePretrainedModel = false; // Set to true if you use one of the Cellpose pretrained model, false otherwise
+cellposeModelName = "cyto2_sox9_p5-15-60_27-11-24";
 cellposeDiameter = 35; // pix
 cellposeStitchThreshold = 0.5;
 
@@ -50,7 +52,11 @@ for (f = 0; f < inputFiles.length; f++) {
 		nbSlices = nSlices;
 		
 		// Detect cells with Cellpose
-		run("Cellpose ...", "env_path="+cellposeEnvPath+" env_type=conda model="+cellposeModel+" model_path=path\\to\\own_cellpose_model diameter="+cellposeDiameter+" ch1=0 ch2=-1 additional_flags=[--use_gpu, --stitch_threshold, "+cellposeStitchThreshold+"]");
+		if(cellposePretrainedModel) {
+			run("Cellpose ...", "env_path="+cellposeEnvPath+" env_type=conda model="+cellposeModelName+" model_path=path\\to\\own_cellpose_model diameter="+cellposeDiameter+" ch1=0 ch2=-1 additional_flags=[--use_gpu, --stitch_threshold, "+cellposeStitchThreshold+"]");
+		} else {
+			run("Cellpose ...", "env_path="+cellposeEnvPath+" env_type=conda model= model_path=["+cellposeModelPath+cellposeModelName+"] diameter="+cellposeDiameter+" ch1=0 ch2=-1 additional_flags=[--use_gpu, --stitch_threshold, "+cellposeStitchThreshold +"]");
+		}
 		selectImage("image-cellpose");
 		Stack.setDimensions(1, nbSlices, 1);
 		
@@ -64,15 +70,21 @@ for (f = 0; f < inputFiles.length; f++) {
 		
 		// Filter out cells with volume smaller than cellMinVolume and cells that appear on only one slice
 		run("3D Manager Options", "volume bounding_box distance_between_centers=10 distance_max_contact=1.80 drawing=Contour display");
+		cellLabel = 1;
 		Ext.Manager3D_Measure();
 		for(c = 0; c < nbCells; c++) {
 			vol = getResult("Vol (unit)", c);
 			zmin = getResult("Zmin (pix)", c);
 			zmax = getResult("Zmax (pix)", c);
 			if(vol < cellMinVolume || zmin == zmax) {
-				// Fill cell with black in mask
+				// Clear cell in mask
 				Ext.Manager3D_Select(c);
 				Ext.Manager3D_FillStack(0, 0, 0);
+			} else {
+				// Reset cell label in mask
+				Ext.Manager3D_Select(c);
+				Ext.Manager3D_FillStack(cellLabel, cellLabel, cellLabel);
+				cellLabel++;
 			}
 		}
 		// Clear 3D Manager and load only remaining cells
