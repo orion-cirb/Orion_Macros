@@ -1,3 +1,11 @@
+/*
+ * Description: Process all images in input directory
+ * Author: Héloïse Monnet @ ORION-CIRB
+ * Date: December 2024
+ * Repository: https://github.com/orion-cirb/Orion_Macros.git
+ * Dependencies: None
+*/
+
 // Hide on-screen updates for faster macro execution
 setBatchMode(true);
 

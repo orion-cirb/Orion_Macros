@@ -1,6 +1,8 @@
 /*
  * Description: Detect 3D cells in z-stacks using the 2D-stitched version of Cellpose
- * Author: Héloïse Monnet @ ORION-CIRB
+ * Developed for: Lucie, Cohen-Salmon's team
+ * Author: Héloïse Monnet @ ORION-CIRB 
+ * Date: December 2024
  * Repository: https://github.com/orion-cirb/Orion_Macros.git
  * Dependencies: 3D ImageJ Suite Fiji plugin + PTBIOP Fiji plugin + Cellpose conda environment
 */
