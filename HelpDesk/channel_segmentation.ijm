@@ -12,6 +12,7 @@
 fileExtension = ".nd2";
 channel = 2;
 autoThresholdMethod = "Default";
+objectMeanVolume = 125; // µm3
 ////////////////////////////////////////////////
 
 // Hide on-screen updates for faster macro execution
@@ -32,7 +33,7 @@ inputFiles = getFileList(inputDir);
 
 // Create a file named "results.csv" and write headers in it
 fileResults = File.open(resultDir + "results.csv");
-print(fileResults, "Image name,ROI volume (µm3),Segmented volume (µm3)\n");
+print(fileResults, "Image name,ROI volume (µm3),Segmented volume (µm3),Estimated number of objects\n");
 
 // Process each file with fileExtension extension in the input directory
 for (i = 0; i < inputFiles.length; i=i+1) {
@@ -82,7 +83,7 @@ for (i = 0; i < inputFiles.length; i=i+1) {
 		// Measure and save mask volume
 		run("3D Manager Options", "volume distance_between_centers=10 distance_max_contact=1.80 drawing=Contour display");
 		Ext.Manager3D_Measure();
-		print(fileResults, imgName+","+roiVolume+","+getResult("Vol (unit)", 0)+"\n");
+		print(fileResults, imgName+","+roiVolume+","+getResult("Vol (unit)", 0)+","+Math.round(getResult("Vol (unit)", 0)/objectMeanVolume)+"\n");
 		Ext.Manager3D_Close();
 
 		// Close all windows
