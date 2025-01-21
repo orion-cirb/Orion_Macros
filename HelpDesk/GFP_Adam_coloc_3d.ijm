@@ -6,7 +6,7 @@
  * Author: Héloïse Monnet @ ORION-CIRB
  * Date: January 2025
  * Repository: https://github.com/orion-cirb/Orion_Macros.git
- * Dependencies: None
+ * Dependencies: 3D ImageJ Suite Fiji plugin
 */
 
 // PARAMETERS TO REVIEW BEFORE LAUNCHING MACRO //
