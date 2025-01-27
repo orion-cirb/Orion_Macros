@@ -4,7 +4,7 @@
  * 		Compute cells volume and mean intensity in another channel
  * Developed for: Tristan, Cohen-Salmon's team
  * Author: Héloïse Monnet @ ORION-CIRB 
- * Date: January 2022
+ * Date: January 2025
  * Repository: https://github.com/orion-cirb/Orion_Macros.git
  * Dependencies: 3D ImageJ Suite Fiji plugin + PTBIOP Fiji plugin + Cellpose conda environment
 */
