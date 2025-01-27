@@ -130,6 +130,7 @@ for (f = 0; f < inputFiles.length; f++) {
     }
 }
 
+File.close(fileResults);
 print("- Analysis done! -");
 
 setBatchMode(false);
