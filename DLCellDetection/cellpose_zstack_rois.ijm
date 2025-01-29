@@ -14,8 +14,8 @@
 fileExtension = ".czi";
 channel = 3;
 
-cellposeEnvPath = "/opt/miniconda3/envs/cellpose/"; //"C:/Users/utilisateur/miniconda3/envs/CellPose/"; TODO
-cellposeModelPath = "/home/heloise/.cellpose/models"; //"C:/Users/utilisateur/.cellpose/models/"; TODO
+cellposeEnvPath = "C:/Users/utilisateur/miniconda3/envs/CellPose/";
+cellposeModelPath = "C:/Users/utilisateur/.cellpose/models/";
 cellposePretrainedModel = true; // Set to true if you use one of the Cellpose pretrained model, false otherwise
 cellposeModelName = "cyto";
 cellposeDiameter = 40; // pix
