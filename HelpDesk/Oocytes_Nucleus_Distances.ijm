@@ -36,7 +36,8 @@ for (i = 0; i < inputFiles.length; i++) {
 		title = getTitle();
 		
 		// Matadata are bugged, calibration is needed
-		run("Properties...", "channels=2 slices="+(nSlices/2)+" frames=1 pixel_width=0.1030000 pixel_height=0.1030000 voxel_depth=0.5");
+		getPixelSize(unit, pixelWidth, pixelHeight);
+		run("Properties...", "channels=2 slices="+(nSlices/2)+" frames=1 pixel_width="+pixelWidth+" pixel_height="+pixelHeight+" voxel_depth=0.5");
 		run("Split Channels");
 		selectImage("C1-"+title);
 		
