@@ -1,14 +1,18 @@
 /*
- * Description: Segment signal from 2 channels, recoup 3D object, calcul the CenterCenter and Border Border distance between them
- * Developed for: Maria
+ * Description: Segment signal from 2 channels, label obtained objects in 3D, and compute the center-center and border-border distance between them
+ * Developed for: Maria, Verlhac's team
  * Author: Thomas Caille & Héloïse Monnet @ ORION-CIRB 
- * Date: January 2025
- * Repository: https://github.com/orion-cirb/Orion_Macros/tree/main/HelpDesk/Oocytes_Nucleus_Distances.ijm
- * Dependencies: 3D ImageJ Suite Plug-in
+ * Date: February 2025
+ * Repository: https://github.com/orion-cirb/Orion_Macros/blob/main/HelpDesk/Oocytes_Nucleus_Distances.ijm
+ * Dependencies: 3D ImageJ Suite plugin
 */
 
-MinVolume_488 = 1;
-MinVolume_561 = 3;
+// PARAMETERS TO REVIEW BEFORE LAUNCHING MACRO //
+
+minObjectVolume_488 = 1; // µm3
+minObjectVolume_561 = 3; // µm3
+
+////////////////////////////////////////////////
 
 // Hide on-screen updates for faster macro execution
 setBatchMode(true);
@@ -16,153 +20,145 @@ setBatchMode(true);
 // Ask for the images directory
 inputDir = getDirectory("Please select a directory containing images to analyze");
 
+// Create results directory
 getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec);
-resultDir = inputDir + "Results "+ month +"_"+ dayOfMonth +"_"+ hour +"h"+ minute + File.separator();
-if (!File.isDirectory(resultDir)) {
-	File.makeDirectory(resultDir);
-}
+resultDir = inputDir+"Results "+year+"-"+(month+1)+"-"+dayOfMonth+"_"+hour+"h"+minute+"m"+second+File.separator();
+File.makeDirectory(resultDir);
 
+// Get all files in the input directory
 inputFiles = getFileList(inputDir);
-
-
 
 // Loop through all files with .nd extension
 for (i = 0; i < inputFiles.length; i++) {
     if (endsWith(inputFiles[i], ".nd")) {
-    	// Makeresults directory
-    	nameNoExt = File.getNameWithoutExtension(inputDir+inputFiles[i]);
-    	imageResultDir = resultDir + nameNoExt + File.separator();
-    	File.makeDirectory(imageResultDir);
-    	volumeResultsFilePath = imageResultDir + "Volumes.csv";
-    	// Open the fluorescent image 
+    	imgNameNoExt = File.getNameWithoutExtension(inputDir+inputFiles[i]);
+    	print("\nAnalyzing image" + imgNameNoExt + "...");
+    	
+    	// Create results subdirectory
+    	imgResultDir = resultDir + imgNameNoExt + File.separator();
+    	File.makeDirectory(imgResultDir);
+    	// Create csv results file to save objects volume later on
+    	volumeResultsFilePath = imgResultDir + "volumes.csv";
+    	File.append("Channel, LabelObj, Volume (µm3)", volumeResultsFilePath);
+    	
+    	// Open image 
     	run("Bio-Formats Importer", "open=["+inputDir + inputFiles[i]+"] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT series_2");
-    	print("\n - Analyzing image " + nameNoExt + " -");
-		title = getTitle();
-		
-		// Matadata are bugged, calibration is needed
-		getPixelSize(unit, pixelWidth, pixelHeight);
-		run("Properties...", "channels=2 slices="+(nSlices/2)+" frames=1 pixel_width="+pixelWidth+" pixel_height="+pixelHeight+" voxel_depth=0.5");
+		imgTitle = getTitle();
+		// Metadata wrongly saved, correct pixel depth
+		getVoxelSize(pixelWidth, pixelHeight, pixelDepth, unit);
+		setVoxelSize(pixelWidth, pixelHeight, 0.5, unit);
+		// Split channels
 		run("Split Channels");
-		selectImage("C1-"+title);
 		
-		// Preprocessing : smooth the image with median filter
+		// SEGMENT FIRST CHANNEL (488)
+		selectImage("C1-"+imgTitle);
+		
+		// Preprocessing: smooth channel with median filter
 		run("Subtract Background...", "rolling=50 sliding stack");
 		run("Median...", "radius=4 stack");
 		
-		// Processing : segmentation with autothreshold, best results with MaxEntropy
+		// Automatic thresholding
 		setAutoThreshold("MaxEntropy dark stack");
 		setOption("BlackBackground", true);
 		run("Convert to Mask", "method=MaxEntropy background=Dark black");
 		
-		// Launch and add the first channel to the 3D manager
+		// Post-processing: filter out objects with volume smaller than MinVolume_488
+		run("Median...", "radius=1 stack");
+		// Launch 3D Manager
 		run("3D Manager");
-		run("3D Manager Options", "volume bounding_box distance_max_contact=1.80 drawing=Contour display");
+		// Convert binary image into labelled one
 		Ext.Manager3D_Segment(128, 255);
+		rename("C1-labeled");
+		// Load obtained 3D objects into 3D manager
 		Ext.Manager3D_AddImage();
+		// Filter out unwanted objects
+		filterOutObjects(minObjectVolume_488, "488");
 		
-		Ext.Manager3D_Count(nbCells);
-		print(nbCells + " cells detected before size filtering");
+		// Save objects 3D ROIs
+		Ext.Manager3D_SelectAll();
+		Ext.Manager3D_Save(imgResultDir+"roisObjects_488.zip");
 		
-		File.append("channel 488 :",volumeResultsFilePath );
-		File.append(" ",volumeResultsFilePath );
-		// Filter out cells with volume smaller than cellMinVolume and cells that appear on only one slice
-		cellLabel = 1;
-		Ext.Manager3D_Measure();
-		for(c = 0; c < nbCells; c++) {
-			vol = getResult("Vol (unit)", c);
-			zmin = getResult("Zmin (pix)", c);
-			zmax = getResult("Zmax (pix)", c);
-			if(vol < MinVolume_488 || zmin == zmax) {
-				// Clear cell in mask
-				Ext.Manager3D_Select(c);
-				Ext.Manager3D_FillStack(0, 0, 0);
-			} else {
-				// Reset cell label in mask
-				Ext.Manager3D_Select(c);
-				Ext.Manager3D_FillStack(cellLabel, cellLabel, cellLabel);
-				cellLabel++;
-				File.append(cellLabel-1+","+vol+",",volumeResultsFilePath );
-			}
-		}
-		Ext.Manager3D_Reset();
-		Ext.Manager3D_AddImage();
-		Ext.Manager3D_Count(nbCells);
-		print(nbCells + " cells detected after size filtering");
-			
-		// Save the first channel 3D mask
-		saveAs("tiff", imageResultDir+ "3D-Labeled_image_C1");
-		Ext.Manager3D_Reset();		
+		// SEGMENT SECOND CHANNEL (561)
+		selectImage("C2-"+imgTitle);
 		
-		// Work on the second channel
-		selectImage("C2-"+ title);
-		
-		// Preprocessing : smooth the image with median filter
+		// Preprocessing: smooth channel with median filter
 		run("Subtract Background...", "rolling=50 sliding stack");
 		run("Median...", "radius=4 stack");
 		
-		// Processing : segmentation with autothreshold, best results with MaxEntropy
+		// Automatic thresholding
 		setAutoThreshold("MaxEntropy dark stack");
 		setOption("BlackBackground", true);
 		run("Convert to Mask", "method=MaxEntropy background=Dark black");
 		
-		// Launch and add the second channel to the 3D manager
-		run("3D Manager Options", "volume bounding_box distance_max_contact=1.80 drawing=Contour display");
+		// Post-processing: filter out objects with volume smaller than MinVolume_561
+		run("Median...", "radius=1 stack");
+		// Reset 3D Manager
+		Ext.Manager3D_Reset();
+		// Convert binary image into labelled one
 		Ext.Manager3D_Segment(128, 255);
-		Ext.Manager3D_AddImage();	
-		Ext.Manager3D_Count(nbCells);
-		print(nbCells + " cells detected before size filtering");
-		File.append("channel 561 :",volumeResultsFilePath );
-		File.append(" ",volumeResultsFilePath );
-		
-		// Filter out cells with volume smaller than cellMinVolume and cells that appear on only one slice
-		cellLabel = 1;
-		Ext.Manager3D_Measure();
-		for(c = 0; c < nbCells; c++) {
-			vol = getResult("Vol (unit)", c);
-			zmin = getResult("Zmin (pix)", c);
-			zmax = getResult("Zmax (pix)", c);
-			if(vol < MinVolume_561 || zmin == zmax) {
-				// Clear cell in mask
-				Ext.Manager3D_Select(c);
-				Ext.Manager3D_FillStack(0, 0, 0);
-			} else {
-				// Reset cell label in mask
-				Ext.Manager3D_Select(c);
-				Ext.Manager3D_FillStack(cellLabel, cellLabel, cellLabel);
-				cellLabel++;
-				File.append(cellLabel-1+","+vol+",",volumeResultsFilePath );
-			}
-		}
-		Ext.Manager3D_Reset();
+		rename("C2-labeled");
+		// Load obtained 3D objects into 3D manager
 		Ext.Manager3D_AddImage();
-		Ext.Manager3D_Count(nbCells);
-		print(nbCells + " cells detected after size filtering");
+		// Filter out unwanted objects
+		filterOutObjects(minObjectVolume_561, "561");
 		
-		// Save the 2nd channel 3D mask
-		saveAs("tiff", imageResultDir+ "3D-Labeled_image_C2");
+		// Save objects 3D ROIs
+		Ext.Manager3D_SelectAll();
+		Ext.Manager3D_Save(imgResultDir+"roisObjects_561.zip");
 		
-		// Calcul the 3D distance between objects and save the results tables
-		run("3D Distances", "image_a=3D-Labeled_image_C1 image_b=3D-Labeled_image_C2 distance=DistCenterCenterUnit distance_maximum=1000");
-		saveAs("results", imageResultDir + "DistCenterCenter.csv");
-		close("DistCenterCenter.csv");
-		run("3D Distances", "image_a=3D-Labeled_image_C1 image_b=3D-Labeled_image_C2 distance=DistBorderBorderUnit distance_maximum=1000");
-		saveAs("results", imageResultDir + "DistBorderBorder.csv");
+		// Compute and save 3D distance between objects in each channel
+		run("3D Distances", "image_a=C1-labeled image_b=C2-labeled distance=DistCenterCenterUnit distance_maximum=1000");
+		saveAs("results", imgResultDir + "distCenterCenter.csv");
+		close("distCenterCenter.csv");
+		run("3D Distances", "image_a=C1-labeled image_b=C2-labeled distance=DistBorderBorderUnit distance_maximum=1000");
+		saveAs("results", imgResultDir + "distBorderBorder.csv");
+		close("distBorderBorder.csv");
 		
-		// Save a Composite with channel1(red) = 561 and channel2(green) = 488
-		run("Merge Channels...", "c1=3D-Labeled_image_C2.tif c2=3D-Labeled_image_C1.tif create");
-		saveAs("tiff", imageResultDir+ "3D-Composite_image");
+		// Save labeled images as composite: channel 1 (488) in red and channel 2 (561) in green
+		run("Merge Channels...", "c1=C1-labeled c2=C2-labeled create");
+		saveAs("tiff", imgResultDir+ "labeledObjects_488-561");
 		
-		// Close all windows and reset Tables
-		close("DistBorderBorder.csv");
-		Ext.Manager3D_Reset();
-		Table.reset("MeasureTable");
-		Table.reset("DistBorderBorder.csv");
+		// Close all windows and reset 3D Manager
 		close("*");
-		
+		Ext.Manager3D_Reset();
     }
-    
 }
+
 // Print completion message
-print("Analysis Done!");
+print("\nAnalysis done!");
+
 // Restore batch mode to default
 setBatchMode(false);
+
+
+//////////////// FUNCTIONS ////////////////////
+
+// Filter out objects with volume smaller than minVol and objects that appear on only one slice
+function filterOutObjects(minVol, channel) {
+	Ext.Manager3D_Count(nbObjs);
+	print(nbObjs + " objects detected before size filtering");
+	
+	run("3D Manager Options", "volume bounding_box distance_between_centers=10 distance_max_contact=1.80 drawing=Contour");
+	objLabel = 1;
+	for(n = 0; n < nbObjs; n++) {
+		Ext.Manager3D_Measure3D(n,"Vol",vol);
+		Ext.Manager3D_Bounding3D(n,x0,x1,y0,y1,z0,z1);	
+		if(vol < minVol || z0 == z1) {
+			// Clear object in mask
+			Ext.Manager3D_Select(n);
+			Ext.Manager3D_FillStack(0, 0, 0);
+		} else {
+			// Reset object label in mask
+			Ext.Manager3D_Select(n);
+			Ext.Manager3D_FillStack(objLabel, objLabel, objLabel);
+			File.append(channel+","+objLabel+","+vol, volumeResultsFilePath);
+			objLabel++;
+		}
+	}
+	Ext.Manager3D_Reset();
+	Ext.Manager3D_AddImage();
+	setMinAndMax(0, objLabel);
+	
+	Ext.Manager3D_Count(nbObjs);
+	print(nbObjs + " objects detected after size filtering");
+}
