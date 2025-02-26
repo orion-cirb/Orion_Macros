@@ -42,13 +42,17 @@ for (i = 0; i < inputFiles.length; i++) {
     	File.append("Channel, LabelObj, Volume (µm3)", volumeResultsFilePath);
     	
     	// Open image 
-    	run("Bio-Formats Importer", "open=["+inputDir + inputFiles[i]+"] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT series_2");
+    	run("Bio-Formats Importer", "open=["+inputDir + inputFiles[i]+"] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT ");
 		imgTitle = getTitle();
+		run("Duplicate...", "title="+imgTitle+" duplicate channels=2-3");
 		// Metadata wrongly saved, correct pixel depth
 		getVoxelSize(pixelWidth, pixelHeight, pixelDepth, unit);
 		setVoxelSize(pixelWidth, pixelHeight, 0.5, unit);
 		// Split channels
 		run("Split Channels");
+		selectImage(imgTitle);
+		close();
+		
 		
 		// SEGMENT FIRST CHANNEL (488)
 		selectImage("C1-"+imgTitle);
@@ -115,12 +119,13 @@ for (i = 0; i < inputFiles.length; i++) {
 		close("distBorderBorder.csv");
 		
 		// Save labeled images as composite: channel 1 (488) in red and channel 2 (561) in green
-		run("Merge Channels...", "c1=C1-labeled c2=C2-labeled create");
+		run("Merge Channels...", "c1=C2-labeled c2=C1-labeled create");
 		saveAs("tiff", imgResultDir+ "labeledObjects_488-561");
 		
 		// Close all windows and reset 3D Manager
 		close("*");
 		Ext.Manager3D_Reset();
+		
     }
 }
 
