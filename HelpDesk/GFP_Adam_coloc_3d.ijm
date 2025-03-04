@@ -23,7 +23,7 @@ autoThresholdMethodAdam = "Triangle";
 ////////////////////////////////////////////////
 
 // Hide images during macro execution
-setBatchMode(true);
+setBatchMode(false);
 
 // Ask for the images directory
 inputDir = getDirectory("Please select a directory containing images to analyze");
@@ -38,9 +38,10 @@ if (!File.isDirectory(resultDir)) {
 // Get all files in the input directory
 inputFiles = getFileList(inputDir);
 
-// Create global/branches_length/branches_diam results files and write headers in them
+// Create results file and write headers in it
 fileResultsGlobal = File.open(resultDir + "results.csv");
 print(fileResultsGlobal, "Image name,Slices nb,Gfp background noise,Adam background noise,Gfp volume (µm3),Gfp mean intensity,Adam volume (µm3),Adam mean intensity,Coloc volume (µm3),Coloc mean intensity in Adam channel\n");
+File.close(fileResultsGlobal);
 
 // Loop through all files with fileExtension extension
 for (i=0; i<inputFiles.length; i++) {
@@ -73,6 +74,7 @@ for (i=0; i<inputFiles.length; i++) {
 		List.setMeasurements;
 		bgGfp = List.getValue("Median");
 		close("bgGfp");
+		close("MIN_bgGfp");
 		// Segment channel
 		selectImage("rawGfp");
 		run("Duplicate...", "title=maskGfp duplicate");
@@ -91,6 +93,7 @@ for (i=0; i<inputFiles.length; i++) {
 		List.setMeasurements;
 		bgAdam = List.getValue("Median");
 		close("bgAdam");
+		close("MIN_bgAdam");
 		// Segment channel
 		selectImage("rawAdam");
 		run("Duplicate...", "title=maskAdam duplicate");
@@ -103,6 +106,17 @@ for (i=0; i<inputFiles.length; i++) {
 		// Clear nuclei in Gfp and Adam masks
 		imageCalculator("Subtract stack", "maskGfp","maskDapi");
 		imageCalculator("Subtract stack", "maskAdam","maskDapi");
+		
+		// Ask user to clear unwanted regions in Gfp and Adam masks
+		selectImage("maskGfp");
+		selectImage("maskAdam");
+		Dialog.createNonBlocking("");
+		Dialog.addMessage("Clear unwanted regions in maskGfp and maskAdam");
+		Dialog.show();
+		selectImage("maskGfp");
+		run("Select None");
+		selectImage("maskAdam");
+		run("Select None");
 		
 		// Compute Gfp and Adam masks colocalization
 		imageCalculator("AND create stack", "maskGfp", "maskAdam");
@@ -124,7 +138,7 @@ for (i=0; i<inputFiles.length; i++) {
 			Ext.Manager3D_Quantif3D(0,"Mean",int);
 			params += "," + vol + "," + int;
 		}
-		print(fileResultsGlobal, params+"\n");
+		File.append(params, resultDir + "results.csv");
 		
 		// Save resulting masks
 		run("Merge Channels...", "c1=maskDapi c2=maskGfp c3=maskAdam create");
