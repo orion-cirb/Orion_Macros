@@ -7,18 +7,21 @@
  * Dependencies: None
 */
 
+// Get current image title
 imgName = getTitle();
 
+// Create a max intensity Z-projection
 run("Z Project...", "projection=[Max Intensity]");
 run("Duplicate...", "title=proj duplicate");
 
+// Split channels
 selectImage("MAX_"+imgName);
 run("Split Channels");
 
 // Close DAPI channel
 close("C1-MAX_"+imgName);
 
-// Count cells on MAFA channel
+// Detect cells on Mafa channel
 selectImage("C2-MAX_"+imgName);
 run("Gaussian Blur...", "sigma=3");
 run("Remove Outliers...", "radius=10 threshold=0 which=Bright");
@@ -26,15 +29,16 @@ run("Find Maxima...", "prominence=40 output=[Single Points]");
 run("Options...", "iterations=2 count=1 black pad do=Dilate");
 run("Options...", "iterations=20 count=3 black pad do=Dilate");
 rename("MAFA_"+imgName);
+// Count Mafa cells
 run("Set Measurements...", "centroid display redirect=None decimal=2");
 run("Analyze Particles...", "display exclude");
-// Add counted cells to ROI Manager
+// Add Mafa ROIs to ROI Manager
 run("Create Selection");
 roiManager("Add");
 roiManager("Select", 0);
 roiManager("Rename", "MAFA");
 
-// Count cells on CFOS channel
+// Detect cells on cFos channel
 selectImage("C3-MAX_"+imgName);
 run("Gaussian Blur...", "sigma=5");
 run("Remove Outliers...", "radius=10 threshold=0 which=Bright");
@@ -42,21 +46,26 @@ run("Find Maxima...", "prominence=20 output=[Single Points]");
 run("Options...", "iterations=2 count=1 black pad do=Dilate");
 run("Options...", "iterations=20 count=3 black pad do=Dilate");
 rename("CFOS_"+imgName);
-// Add counted cells to ROI Manager
+// Add cFos ROIs to ROI Manager
 run("Create Selection");
 roiManager("Add");
 roiManager("Select", 1);
 roiManager("Rename", "CFOS");
 
-// Compute intersection of two binary masks and count MAFA-cFOS positive cells
+// Detect overlapping (double-positive) cells
 imageCalculator("AND create", "MAFA_"+imgName,"CFOS_"+imgName);
 rename("MAFA_CFOS_"+imgName);
+// Count double-positive cells
 run("Analyze Particles...", "display exclude");
-// Add counted cells to ROI Manager
-run("Create Selection");
-roiManager("Add");
-roiManager("Select", 2);
-roiManager("Rename", "MAFA_CFOS");
+// Add double-positive ROIs to ROI Manager
+getStatistics(area, mean, min, max, std, histogram)
+if(max > 0) {
+    run("Create Selection");
+    roiManager("Add");
+    roiManager("Select", 2);
+    roiManager("Rename", "MAFA_CFOS");   
+}
 
+// Close useless images
 selectImage("proj");
 close("\\Others");
