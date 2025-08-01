@@ -1,5 +1,5 @@
 /*
- * Description: Modify current image lookup table (LUT) by setting specific RGB colors for four indexed values.
+ * Description: Set specific RGB colors for the background and three microglia classes by modifying the current image lookup table (LUT).
  * Developed for: Nicolas, Garel's team
  * Author: Héloïse Monnet @ ORION-CIRB
  * Date: May 2025
@@ -10,22 +10,22 @@
 run("Spectrum");
 getLut(reds, greens, blues);
 
-// Background
+// Background in black
 reds[0] = 0;
 greens[0] = 0;
 blues[0] = 0;
 
-// VAM
+// VAM microglia in yellow
 reds[1] = 255;
 greens[1] = 255;
 blues[1] = 0;
 
-// VTM
+// VTM microglia in orange
 reds[2] = 255;
 greens[2] = 125;
 blues[2] = 0;
 
-// VDM
+// VDM microglia in blue
 reds[3] = 0;
 greens[3] = 0;
 blues[3] = 255;
